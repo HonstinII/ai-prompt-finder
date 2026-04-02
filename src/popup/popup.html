@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>AI Prompt Finder</h1>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="web">网页图片</button>
+      <button class="tab-btn" data-tab="upload">上传</button>
+      <button class="tab-btn" data-tab="paste">粘贴</button>
+    </div>
+
+    <div class="tab-content">
+      <!-- 网页图片Tab -->
+      <div id="tab-web" class="tab-panel active">
+        <p class="hint">在网页上右键点击图片，选择"识别AI提示词"</p>
+        <div id="page-images" class="page-images"></div>
+      </div>
+
+      <!-- 上传Tab -->
+      <div id="tab-upload" class="tab-panel">
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="file-input" accept="image/*" hidden>
+          <p>点击选择图片或拖拽到此处</p>
+        </div>
+        <div id="preview-container" class="preview-container hidden"></div>
+      </div>
+
+      <!-- 粘贴Tab -->
+      <div id="tab-paste" class="tab-panel">
+        <div class="paste-area" id="paste-area">
+          <p>粘贴图片到这里 (Ctrl+V / Cmd+V)</p>
+        </div>
+        <div id="paste-preview" class="preview-container hidden"></div>
+      </div>
+    </div>
+
+    <!-- 结果区域 -->
+    <div id="result-area" class="result-area hidden">
+      <h3>识别结果</h3>
+      <div id="prompt-output"></div>
+      <div class="actions">
+        <button id="copy-btn" class="btn-primary">复制英文</button>
+        <button id="copy-zh-btn" class="btn-secondary">复制中文</button>
+      </div>
+    </div>
+
+    <!-- 设置区域 -->
+    <div class="settings-section">
+      <button id="settings-toggle" class="settings-toggle">⚙️ 设置</button>
+      <div id="settings-panel" class="settings-panel hidden">
+        <label>
+          API Provider:
+          <select id="api-provider">
+            <option value="openai">OpenAI GPT-4V</option>
+            <option value="anthropic">Claude Vision</option>
+          </select>
+        </label>
+        <label>
+          API Key:
+          <input type="password" id="api-key" placeholder="输入你的API Key">
+        </label>
+        <button id="save-settings" class="btn-save">保存设置</button>
+      </div>
+    </div>
+
+    <!-- 历史记录入口 -->
+    <div class="history-link">
+      <button id="history-btn">📜 历史记录</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
