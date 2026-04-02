@@ -185,7 +185,70 @@ async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel) {
   const baseUrl = customEndpoint || "https://api.openai.com/v1";
   const model = apiModel || "gpt-4o";
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  // 构建消息内容
+  let content;
+  if (imageUrl.startsWith('data:')) {
+    // Data URL (base64) - 直接使用
+    content = [
+      {
+        type: "text",
+        text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
+1. 主体描述（Subject）
+2. 艺术风格（Style）
+3. 构图细节（Composition）
+4. 色彩光线（Color & Lighting）
+5. 质量修饰词（Quality modifiers）
+
+格式：
+【英文】
+[英文提示词]
+
+【中文】
+[中文描述]`
+      },
+      {
+        type: "image_url",
+        image_url: { url: imageUrl }
+      }
+    ];
+  } else {
+    // 远程URL - 先下载转为base64
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const base64 = await blobToBase64(blob);
+      const mimeType = blob.type || 'image/jpeg';
+      content = [
+        {
+          type: "text",
+          text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
+1. 主体描述（Subject）
+2. 艺术风格（Style）
+3. 构图细节（Composition）
+4. 色彩光线（Color & Lighting）
+5. 质量修饰词（Quality modifiers）
+
+格式：
+【英文】
+[英文提示词]
+
+【中文】
+[中文描述]`
+        },
+        {
+          type: "image_url",
+          image_url: { url: `data:${mimeType};base64,${base64}` }
+        }
+      ];
+    } catch (error) {
+      throw new Error(`无法获取图片: ${error.message}`);
+    }
+  }
+
+  const apiResponse = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -193,6 +256,67 @@ async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel) {
     },
     body: JSON.stringify({
       model: model,
+      messages: [
+        {
+          role: "user",
+          content: content
+        }
+      ],
+      max_tokens: 1000
+    })
+  });
+
+  if (!apiResponse.ok) {
+    const errorText = await apiResponse.text();
+    throw new Error(`API error: ${apiResponse.status} - ${errorText}`);
+  }
+
+  const data = await apiResponse.json();
+  if (!data.choices || !data.choices[0]) {
+    throw new Error(`API返回格式错误: ${JSON.stringify(data)}`);
+  }
+  return data.choices[0].message.content;
+}
+
+// Anthropic Claude Vision 调用
+async function analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel) {
+  // 将图片URL转换为base64
+  let base64Data;
+  let mimeType = 'image/jpeg';
+
+  if (imageUrl.startsWith('data:')) {
+    // Data URL - 直接提取
+    const parts = imageUrl.split(',');
+    base64Data = parts[1];
+    const meta = parts[0].match(/data:([^;]+);/);
+    if (meta) mimeType = meta[1];
+  } else {
+    // 远程URL - 先下载
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      const blob = await response.blob();
+      mimeType = blob.type || 'image/jpeg';
+      base64Data = await blobToBase64(blob);
+    } catch (error) {
+      throw new Error(`无法获取图片: ${error.message}`);
+    }
+  }
+
+  const baseUrl = customEndpoint || "https://api.anthropic.com/v1";
+  const model = apiModel || "claude-3-5-sonnet-20241022";
+  const claudeResponse = await fetch(`${baseUrl}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01"
+    },
+    body: JSON.stringify({
+      model: model,
+      max_tokens: 1024,
       messages: [
         {
           role: "user",
@@ -214,48 +338,27 @@ async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel) {
 [中文描述]`
             },
             {
-              type: "image_url",
-              image_url: { url: imageUrl }
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mimeType,
+                data: base64Data
+              }
             }
           ]
         }
-      ],
-      max_tokens: 1000
+      ]
     })
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+  if (!claudeResponse.ok) {
+    const errorText = await claudeResponse.text();
+    throw new Error(`Claude API error: ${claudeResponse.status} - ${errorText}`);
   }
 
-  const data = await response.json();
-  return data.choices[0].message.content;
+  const data = await claudeResponse.json();
+  return data.content[0].text;
 }
-
-// Anthropic Claude Vision 调用
-async function analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel) {
-  // 将图片URL转换为base64
-  let base64Data;
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status}`);
-    }
-    const blob = await response.blob();
-    base64Data = await blobToBase64(blob);
-  } catch (error) {
-    // 如果是 data URL（base64直接传入），直接提取
-    if (imageUrl.startsWith('data:')) {
-      base64Data = imageUrl.split(',')[1];
-    } else {
-      throw new Error(`无法获取图片: ${error.message}`);
-    }
-  }
-
-  const baseUrl = customEndpoint || "https://api.anthropic.com/v1";
-  const model = apiModel || "claude-3-5-sonnet-20241022";
-  const claudeResponse = await fetch(`${baseUrl}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
