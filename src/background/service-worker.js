@@ -7,6 +7,7 @@
 const DEFAULT_SETTINGS = {
   apiProvider: "openai", // "openai" | "anthropic"
   apiKey: "",
+  customEndpoint: "", // 中转站地址，如 https://api.openai.com/v1
   language: "both" // "en" | "zh" | "both"
 };
 
@@ -56,6 +57,7 @@ function blobToBase64(blob) {
 async function analyzeImage(imageUrl, provider) {
   const settings = await getSettings();
   const apiKey = settings.apiKey;
+  const customEndpoint = settings.customEndpoint;
   const actualProvider = provider || settings.apiProvider;
 
   if (!apiKey) {
@@ -63,15 +65,17 @@ async function analyzeImage(imageUrl, provider) {
   }
 
   if (actualProvider === "anthropic") {
-    return await analyzeWithClaude(imageUrl, apiKey);
+    return await analyzeWithClaude(imageUrl, apiKey, customEndpoint);
   } else {
-    return await analyzeWithOpenAI(imageUrl, apiKey);
+    return await analyzeWithOpenAI(imageUrl, apiKey, customEndpoint);
   }
 }
 
 // OpenAI GPT-4V 调用
-async function analyzeWithOpenAI(imageUrl, apiKey) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint) {
+  const baseUrl = customEndpoint || "https://api.openai.com/v1";
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -120,7 +124,7 @@ async function analyzeWithOpenAI(imageUrl, apiKey) {
 }
 
 // Anthropic Claude Vision 调用
-async function analyzeWithClaude(imageUrl, apiKey) {
+async function analyzeWithClaude(imageUrl, apiKey, customEndpoint) {
   // 将图片URL转换为base64
   let base64Data;
   try {
@@ -139,7 +143,8 @@ async function analyzeWithClaude(imageUrl, apiKey) {
     }
   }
 
-  const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
+  const baseUrl = customEndpoint || "https://api.anthropic.com/v1";
+  const claudeResponse = await fetch(`${baseUrl}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
