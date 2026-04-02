@@ -8,6 +8,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // ============ 点击空白处关闭弹窗 ============
+  document.getElementById("overlay").addEventListener("click", () => {
+    window.close();
+  });
+
   // ============ Tab切换 ============
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");
