@@ -1,6 +1,13 @@
 // AI Prompt Finder - Popup JavaScript
 
 document.addEventListener("DOMContentLoaded", () => {
+  // ============ 监听来自 service worker 的消息 ============
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === "displayResult") {
+      showResult(message.prompt);
+    }
+  });
+
   // ============ Tab切换 ============
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");

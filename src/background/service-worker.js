@@ -277,16 +277,23 @@ chrome.runtime.onInstalled.addListener(() => {
 // 右键菜单点击处理
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
+    console.log("Context menu clicked, image URL:", info.srcUrl);
     analyzeImage(info.srcUrl, null)
       .then(prompt => {
-        // 可以通过 notifications 通知用户
+        console.log("Analysis successful, prompt:", prompt);
         chrome.notifications.create({
           type: "basic",
           title: "AI Prompt Finder",
           message: "分析完成！请查看插件弹窗。"
         });
+        // 发送消息到popup显示结果
+        chrome.runtime.sendMessage({
+          action: "showResultInPopup",
+          prompt: prompt
+        }).catch(e => console.log("Could not send to popup:", e));
       })
       .catch(error => {
+        console.error("Analysis failed:", error);
         chrome.notifications.create({
           type: "basic",
           title: "AI Prompt Finder",
@@ -324,6 +331,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === "getHistory") {
     getHistory().then(history => sendResponse(history));
+    return true;
+  }
+
+  if (message.action === "showResultInPopup") {
+    // 右键菜单分析完成后，通知popup显示结果
+    chrome.runtime.sendMessage({
+      action: "displayResult",
+      prompt: message.prompt
+    }).catch(e => console.log("Could not send to popup:", e));
     return true;
   }
 });
