@@ -57,24 +57,16 @@
       <button id="settings-toggle" class="settings-toggle">⚙️ 设置</button>
       <div id="settings-panel" class="settings-panel hidden">
         <label>
-          API 类型:
-          <select id="api-provider">
-            <option value="openai">OpenAI (GPT系列)</option>
-            <option value="anthropic">Anthropic (Claude系列)</option>
-            <option value="custom">自定义</option>
-          </select>
-        </label>
-        <label>
-          模型名称:
-          <input type="text" id="api-model" placeholder="如 gpt-4o、claude-3-5-sonnet-20241022">
+          API 地址:
+          <input type="text" id="api-endpoint" placeholder="中转站地址，如 https://xxx.com/v1">
         </label>
         <label>
           API Key:
           <input type="password" id="api-key" placeholder="输入你的API Key">
         </label>
-        <label id="custom-endpoint-label" class="hidden">
-          中转站地址:
-          <input type="text" id="custom-endpoint" placeholder="如 https://api.openai.com/v1">
+        <label>
+          模型名称:
+          <input type="text" id="api-model" placeholder="如 gpt-4o">
         </label>
         <button id="save-settings" class="btn-save">保存设置</button>
       </div>

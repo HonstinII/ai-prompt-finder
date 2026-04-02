@@ -93,24 +93,17 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============ 加载设置 ============
   loadSettings();
 
-  // ============ API类型切换 - 显示/隐藏中转站地址 ============
-  document.getElementById("api-provider").addEventListener("change", (e) => {
-    const endpointLabel = document.getElementById("custom-endpoint-label");
-    if (e.target.value === "custom") {
-      endpointLabel.classList.remove("hidden");
-    } else {
-      endpointLabel.classList.add("hidden");
-    }
-  });
-
   // ============ 保存设置 ============
   document.getElementById("save-settings").addEventListener("click", async () => {
     const settings = {
-      apiProvider: document.getElementById("api-provider").value,
-      apiKey: document.getElementById("api-key").value,
-      apiModel: document.getElementById("api-model").value.trim(),
-      customEndpoint: document.getElementById("custom-endpoint").value.trim()
+      apiEndpoint: document.getElementById("api-endpoint").value.trim(),
+      apiKey: document.getElementById("api-key").value.trim(),
+      apiModel: document.getElementById("api-model").value.trim()
     };
+    if (!settings.apiEndpoint || !settings.apiKey || !settings.apiModel) {
+      alert("请填写完整信息");
+      return;
+    }
     await chrome.runtime.sendMessage({ action: "saveSettings", settings });
     alert("设置已保存");
   });
@@ -211,16 +204,9 @@ async function analyzeImage(imageData) {
   showLoading();
 
   try {
-    const settings = await getSettings();
-    if (!settings.apiKey) {
-      showError("请先在设置中配置API Key");
-      return;
-    }
-
     const response = await chrome.runtime.sendMessage({
       action: "analyzeImage",
-      imageUrl: imageData,
-      provider: settings.apiProvider
+      imageUrl: imageData
     });
 
     if (response.success) {
@@ -242,10 +228,9 @@ async function getSettings() {
 async function loadSettings() {
   try {
     const settings = await getSettings();
-    document.getElementById("api-provider").value = settings.apiProvider || "openai";
+    document.getElementById("api-endpoint").value = settings.apiEndpoint || "";
     document.getElementById("api-key").value = settings.apiKey || "";
     document.getElementById("api-model").value = settings.apiModel || "";
-    document.getElementById("custom-endpoint").value = settings.customEndpoint || "";
   } catch (error) {
     console.error("Failed to load settings:", error);
   }

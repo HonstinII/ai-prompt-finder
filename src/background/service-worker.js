@@ -5,11 +5,9 @@
 
 // 默认设置
 const DEFAULT_SETTINGS = {
-  apiProvider: "openai", // "openai" | "anthropic"
+  apiEndpoint: "", // 中转站地址，如 https://xxx.com/v1
   apiKey: "",
-  apiModel: "", // 手动填入的模型名称，如 gpt-4o
-  customEndpoint: "", // 中转站地址，如 https://api.openai.com/v1
-  language: "both" // "en" | "zh" | "both"
+  apiModel: "" // 模型名称，如 gpt-4o
 };
 
 // 获取设置
@@ -55,37 +53,19 @@ function blobToBase64(blob) {
 }
 
 // 分析图片主函数
-async function analyzeImage(imageUrl, provider) {
+async function analyzeImage(imageUrl) {
   const settings = await getSettings();
-  const apiKey = settings.apiKey;
-  const customEndpoint = settings.customEndpoint;
-  const apiModel = settings.apiModel;
-  const actualProvider = provider || settings.apiProvider;
+  const { apiEndpoint, apiKey, apiModel } = settings;
 
+  if (!apiEndpoint) {
+    throw new Error("请先在设置中配置API地址");
+  }
   if (!apiKey) {
     throw new Error("请先在设置中配置API Key");
   }
-
-  if (actualProvider === "anthropic") {
-    return await analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel);
-  } else if (actualProvider === "custom") {
-    return await analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel);
-  } else {
-    return await analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel);
-  }
-}
-
-// 自定义API调用（使用中转站）
-async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
-  if (!customEndpoint) {
-    throw new Error("请填写中转站地址");
-  }
   if (!apiModel) {
-    throw new Error("请填写模型名称");
+    throw new Error("请先在设置中配置模型名称");
   }
-
-  // 中转站通常兼容 OpenAI 格式
-  const baseUrl = customEndpoint.replace(/\/$/, "");
 
   // 构建消息内容
   let content;
@@ -150,6 +130,7 @@ async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
     }
   }
 
+  const baseUrl = apiEndpoint.replace(/\/$/, "");
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -180,237 +161,6 @@ async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
   return data.choices[0].message.content;
 }
 
-// OpenAI GPT-4V 调用
-async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel) {
-  const baseUrl = customEndpoint || "https://api.openai.com/v1";
-  const model = apiModel || "gpt-4o";
-
-  // 构建消息内容
-  let content;
-  if (imageUrl.startsWith('data:')) {
-    // Data URL (base64) - 直接使用
-    content = [
-      {
-        type: "text",
-        text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
-1. 主体描述（Subject）
-2. 艺术风格（Style）
-3. 构图细节（Composition）
-4. 色彩光线（Color & Lighting）
-5. 质量修饰词（Quality modifiers）
-
-格式：
-【英文】
-[英文提示词]
-
-【中文】
-[中文描述]`
-      },
-      {
-        type: "image_url",
-        image_url: { url: imageUrl }
-      }
-    ];
-  } else {
-    // 远程URL - 先下载转为base64
-    try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      const blob = await response.blob();
-      const base64 = await blobToBase64(blob);
-      const mimeType = blob.type || 'image/jpeg';
-      content = [
-        {
-          type: "text",
-          text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
-1. 主体描述（Subject）
-2. 艺术风格（Style）
-3. 构图细节（Composition）
-4. 色彩光线（Color & Lighting）
-5. 质量修饰词（Quality modifiers）
-
-格式：
-【英文】
-[英文提示词]
-
-【中文】
-[中文描述]`
-        },
-        {
-          type: "image_url",
-          image_url: { url: `data:${mimeType};base64,${base64}` }
-        }
-      ];
-    } catch (error) {
-      throw new Error(`无法获取图片: ${error.message}`);
-    }
-  }
-
-  const apiResponse = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: [
-        {
-          role: "user",
-          content: content
-        }
-      ],
-      max_tokens: 1000
-    })
-  });
-
-  if (!apiResponse.ok) {
-    const errorText = await apiResponse.text();
-    throw new Error(`API error: ${apiResponse.status} - ${errorText}`);
-  }
-
-  const data = await apiResponse.json();
-  if (!data.choices || !data.choices[0]) {
-    throw new Error(`API返回格式错误: ${JSON.stringify(data)}`);
-  }
-  return data.choices[0].message.content;
-}
-
-// Anthropic Claude Vision 调用
-async function analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel) {
-  // 将图片URL转换为base64
-  let base64Data;
-  let mimeType = 'image/jpeg';
-
-  if (imageUrl.startsWith('data:')) {
-    // Data URL - 直接提取
-    const parts = imageUrl.split(',');
-    base64Data = parts[1];
-    const meta = parts[0].match(/data:([^;]+);/);
-    if (meta) mimeType = meta[1];
-  } else {
-    // 远程URL - 先下载
-    try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
-      const blob = await response.blob();
-      mimeType = blob.type || 'image/jpeg';
-      base64Data = await blobToBase64(blob);
-    } catch (error) {
-      throw new Error(`无法获取图片: ${error.message}`);
-    }
-  }
-
-  const baseUrl = customEndpoint || "https://api.anthropic.com/v1";
-  const model = apiModel || "claude-3-5-sonnet-20241022";
-  const claudeResponse = await fetch(`${baseUrl}/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: model,
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
-1. 主体描述（Subject）
-2. 艺术风格（Style）
-3. 构图细节（Composition）
-4. 色彩光线（Color & Lighting）
-5. 质量修饰词（Quality modifiers）
-
-格式：
-【英文】
-[英文提示词]
-
-【中文】
-[中文描述]`
-            },
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: mimeType,
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ]
-    })
-  });
-
-  if (!claudeResponse.ok) {
-    const errorText = await claudeResponse.text();
-    throw new Error(`Claude API error: ${claudeResponse.status} - ${errorText}`);
-  }
-
-  const data = await claudeResponse.json();
-  return data.content[0].text;
-}
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01"
-    },
-    body: JSON.stringify({
-      model: model,
-      max_tokens: 1024,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
-1. 主体描述（Subject）
-2. 艺术风格（Style）
-3. 构图细节（Composition）
-4. 色彩光线（Color & Lighting）
-5. 质量修饰词（Quality modifiers）
-
-格式：
-【英文】
-[英文提示词]
-
-【中文】
-[中文描述]`
-            },
-            {
-              type: "image",
-              source: {
-                type: "base64",
-                media_type: "image/jpeg",
-                data: base64Data
-              }
-            }
-          ]
-        }
-      ]
-    })
-  });
-
-  if (!claudeResponse.ok) {
-    const errorData = await claudeResponse.json().catch(() => ({}));
-    throw new Error(`Claude API error: ${claudeResponse.status} - ${errorData.error?.message || 'Unknown error'}`);
-  }
-
-  const data = await claudeResponse.json();
-  return data.content[0].text;
-}
-
 // ============ 消息监听器 ============
 
 // 右键菜单创建
@@ -426,7 +176,7 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
     console.log("Context menu clicked, image URL:", info.srcUrl);
-    analyzeImage(info.srcUrl, null)
+    analyzeImage(info.srcUrl)
       .then(prompt => {
         console.log("Analysis successful, prompt:", prompt);
         chrome.notifications.create({
@@ -434,9 +184,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           title: "AI Prompt Finder",
           message: "分析完成！请查看插件弹窗。"
         });
-        // 发送消息到popup显示结果
         chrome.runtime.sendMessage({
-          action: "showResultInPopup",
+          action: "displayResult",
           prompt: prompt
         }).catch(e => console.log("Could not send to popup:", e));
       })
@@ -453,18 +202,16 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "analyzeImage") {
-    analyzeImage(message.imageUrl, message.provider)
+    analyzeImage(message.imageUrl)
       .then(async (prompt) => {
-        // 保存到历史记录
         await addToHistory({
           imageUrl: message.imageUrl,
-          prompt: prompt,
-          provider: message.provider || 'openai'
+          prompt: prompt
         });
         sendResponse({ success: true, prompt });
       })
       .catch(error => sendResponse({ success: false, error: error.message }));
-    return true; // 异步响应
+    return true;
   }
 
   if (message.action === "getSettings") {
@@ -482,8 +229,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "showResultInPopup") {
-    // 右键菜单分析完成后，通知popup显示结果
+  if (message.action === "displayResult") {
     chrome.runtime.sendMessage({
       action: "displayResult",
       prompt: message.prompt
