@@ -128,9 +128,30 @@ function showPreview(src, containerId) {
 
 function showResult(prompt) {
   const resultArea = document.getElementById("result-area");
-  const promptOutput = document.getElementById("prompt-output");
-  promptOutput.textContent = prompt;
+  resultArea.innerHTML = `
+    <h3>识别结果</h3>
+    <div id="prompt-output">${prompt}</div>
+    <div class="actions">
+      <button id="copy-btn" class="btn-primary">复制英文</button>
+      <button id="copy-zh-btn" class="btn-secondary">复制中文</button>
+    </div>
+  `;
   resultArea.classList.remove("hidden");
+
+  // Re-bind copy button listeners
+  document.getElementById("copy-btn").addEventListener("click", () => {
+    const promptText = document.getElementById("prompt-output").textContent;
+    const englishPrompt = extractEnglish(promptText);
+    navigator.clipboard.writeText(englishPrompt);
+    alert("英文提示词已复制");
+  });
+
+  document.getElementById("copy-zh-btn").addEventListener("click", () => {
+    const promptText = document.getElementById("prompt-output").textContent;
+    const chinesePrompt = extractChinese(promptText);
+    navigator.clipboard.writeText(chinesePrompt);
+    alert("中文描述已复制");
+  });
 }
 
 function showLoading() {
@@ -140,13 +161,17 @@ function showLoading() {
       <div class="spinner"></div>
       <p>正在分析图片...</p>
     </div>
+    <div id="prompt-output" style="display:none;"></div>
   `;
   resultArea.classList.remove("hidden");
 }
 
 function showError(message) {
   const resultArea = document.getElementById("result-area");
-  resultArea.innerHTML = `<p style="color: red;">错误: ${message}</p>`;
+  resultArea.innerHTML = `
+    <p style="color: red;">错误: ${message}</p>
+    <div id="prompt-output" style="display:none;"></div>
+  `;
   resultArea.classList.remove("hidden");
 }
 
@@ -219,7 +244,7 @@ async function showHistory() {
         `;
       });
       historyHtml += '</div>';
-      resultArea.innerHTML = historyHtml;
+      resultArea.innerHTML = historyHtml + '<div id="prompt-output" style="display:none;"></div>';
       resultArea.classList.remove("hidden");
     } else {
       showError("暂无历史记录");
