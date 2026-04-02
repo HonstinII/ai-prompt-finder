@@ -1,25 +1,15 @@
 // AI Prompt Finder - Service Worker
 // 包含存储管理和API调用
 
-// ============ 存储管理 ============
-
-// 默认设置
-const DEFAULT_SETTINGS = {
-  apiEndpoint: "", // 中转站地址，如 https://xxx.com/v1
-  apiKey: "",
-  apiModel: "" // 模型名称，如 gpt-4o
+// ============ 硬编码API配置 ============
+// 请修改以下配置为你的API中转站信息
+const API_CONFIG = {
+  endpoint: "https://api.alltoken.co/v1",
+  apiKey: "sk-hzeBKuTfDfzpnT2329CS4Bo9WLBzl2Nx83rMQ3jANRGs5Gng",
+  model: "MiniMax-M2.7-highspeed"
 };
 
-// 获取设置
-async function getSettings() {
-  const result = await chrome.storage.sync.get(["settings"]);
-  return result.settings || DEFAULT_SETTINGS;
-}
-
-// 保存设置
-async function saveSettings(settings) {
-  await chrome.storage.sync.set({ settings });
-}
+// ============ 存储管理 ============
 
 // 获取历史记录
 async function getHistory() {
@@ -54,17 +44,16 @@ function blobToBase64(blob) {
 
 // 分析图片主函数
 async function analyzeImage(imageUrl) {
-  const settings = await getSettings();
-  const { apiEndpoint, apiKey, apiModel } = settings;
+  const { endpoint, apiKey, model } = API_CONFIG;
 
-  if (!apiEndpoint) {
-    throw new Error("请先在设置中配置API地址");
+  if (!endpoint || endpoint === "https://your-api-endpoint.com/v1") {
+    throw new Error("请先配置API地址");
   }
-  if (!apiKey) {
-    throw new Error("请先在设置中配置API Key");
+  if (!apiKey || apiKey === "your-api-key-here") {
+    throw new Error("请先配置API Key");
   }
-  if (!apiModel) {
-    throw new Error("请先在设置中配置模型名称");
+  if (!model) {
+    throw new Error("请先配置模型名称");
   }
 
   // 构建消息内容
@@ -130,7 +119,7 @@ async function analyzeImage(imageUrl) {
     }
   }
 
-  const baseUrl = apiEndpoint.replace(/\/$/, "");
+  const baseUrl = endpoint.replace(/\/$/, "");
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -138,7 +127,7 @@ async function analyzeImage(imageUrl) {
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: apiModel,
+      model: model,
       messages: [
         {
           role: "user",
@@ -211,16 +200,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ success: true, prompt });
       })
       .catch(error => sendResponse({ success: false, error: error.message }));
-    return true;
-  }
-
-  if (message.action === "getSettings") {
-    getSettings().then(settings => sendResponse(settings));
-    return true;
-  }
-
-  if (message.action === "saveSettings") {
-    saveSettings(message.settings).then(() => sendResponse({ success: true }));
     return true;
   }
 

@@ -12,20 +12,13 @@
     </header>
 
     <div class="tabs">
-      <button class="tab-btn active" data-tab="web">网页图片</button>
-      <button class="tab-btn" data-tab="upload">上传</button>
+      <button class="tab-btn active" data-tab="upload">上传</button>
       <button class="tab-btn" data-tab="paste">粘贴</button>
     </div>
 
     <div class="tab-content">
-      <!-- 网页图片Tab -->
-      <div id="tab-web" class="tab-panel active">
-        <p class="hint">在网页上右键点击图片，选择"识别AI提示词"</p>
-        <div id="page-images" class="page-images"></div>
-      </div>
-
       <!-- 上传Tab -->
-      <div id="tab-upload" class="tab-panel">
+      <div id="tab-upload" class="tab-panel active">
         <div class="upload-area" id="upload-area">
           <input type="file" id="file-input" accept="image/*" hidden>
           <p>点击选择图片或拖拽到此处</p>
@@ -49,26 +42,6 @@
       <div class="actions">
         <button id="copy-btn" class="btn-primary">复制英文</button>
         <button id="copy-zh-btn" class="btn-secondary">复制中文</button>
-      </div>
-    </div>
-
-    <!-- 设置区域 -->
-    <div class="settings-section">
-      <button id="settings-toggle" class="settings-toggle">⚙️ 设置</button>
-      <div id="settings-panel" class="settings-panel hidden">
-        <label>
-          API 地址:
-          <input type="text" id="api-endpoint" placeholder="中转站地址，如 https://xxx.com/v1">
-        </label>
-        <label>
-          API Key:
-          <input type="password" id="api-key" placeholder="输入你的API Key">
-        </label>
-        <label>
-          模型名称:
-          <input type="text" id="api-model" placeholder="如 gpt-4o">
-        </label>
-        <button id="save-settings" class="btn-save">保存设置</button>
       </div>
     </div>
 

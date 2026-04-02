@@ -29,83 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // ============ 设置面板切换 ============
-  const settingsToggle = document.getElementById("settings-toggle");
-  const settingsPanel = document.getElementById("settings-panel");
-
-  settingsToggle.addEventListener("click", () => {
-    settingsPanel.classList.toggle("hidden");
-  });
-
-  // ============ 文件上传 ============
-  const uploadArea = document.getElementById("upload-area");
-  const fileInput = document.getElementById("file-input");
-
-  uploadArea.addEventListener("click", () => fileInput.click());
-
-  uploadArea.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    uploadArea.style.borderColor = "#333";
-  });
-
-  uploadArea.addEventListener("dragleave", () => {
-    uploadArea.style.borderColor = "#ccc";
-  });
-
-  uploadArea.addEventListener("drop", (e) => {
-    e.preventDefault();
-    uploadArea.style.borderColor = "#ccc";
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("image/")) {
-      handleImageFile(file);
-    }
-  });
-
-  fileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) handleImageFile(file);
-  });
-
-  // ============ 粘贴功能 ============
-  const pasteArea = document.getElementById("paste-area");
-
-  pasteArea.addEventListener("paste", (e) => {
-    const items = e.clipboardData.items;
-    for (let item of items) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          showPreview(event.target.result, "paste-preview");
-          analyzeImage(event.target.result);
-        };
-        reader.readAsDataURL(file);
-        break;
-      }
-    }
-  });
-
   // ============ 历史记录按钮 ============
   document.getElementById("history-btn").addEventListener("click", () => {
     showHistory();
-  });
-
-  // ============ 加载设置 ============
-  loadSettings();
-
-  // ============ 保存设置 ============
-  document.getElementById("save-settings").addEventListener("click", async () => {
-    const settings = {
-      apiEndpoint: document.getElementById("api-endpoint").value.trim(),
-      apiKey: document.getElementById("api-key").value.trim(),
-      apiModel: document.getElementById("api-model").value.trim()
-    };
-    if (!settings.apiEndpoint || !settings.apiKey || !settings.apiModel) {
-      alert("请填写完整信息");
-      return;
-    }
-    await chrome.runtime.sendMessage({ action: "saveSettings", settings });
-    alert("设置已保存");
   });
 
   // ============ 复制按钮 ============
@@ -122,6 +48,54 @@ document.addEventListener("DOMContentLoaded", () => {
     navigator.clipboard.writeText(chinesePrompt);
     alert("中文描述已复制");
   });
+});
+
+// ============ 文件上传 ============
+const uploadArea = document.getElementById("upload-area");
+const fileInput = document.getElementById("file-input");
+
+uploadArea.addEventListener("click", () => fileInput.click());
+
+uploadArea.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  uploadArea.style.borderColor = "#333";
+});
+
+uploadArea.addEventListener("dragleave", () => {
+  uploadArea.style.borderColor = "#ccc";
+});
+
+uploadArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadArea.style.borderColor = "#ccc";
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) {
+    handleImageFile(file);
+  }
+});
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) handleImageFile(file);
+});
+
+// ============ 粘贴功能 ============
+const pasteArea = document.getElementById("paste-area");
+
+pasteArea.addEventListener("paste", (e) => {
+  const items = e.clipboardData.items;
+  for (let item of items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        showPreview(event.target.result, "paste-preview");
+        analyzeImage(event.target.result);
+      };
+      reader.readAsDataURL(file);
+      break;
+    }
+  }
 });
 
 // ============ 辅助函数 ============
@@ -216,23 +190,6 @@ async function analyzeImage(imageData) {
     }
   } catch (error) {
     showError(error.message);
-  }
-}
-
-async function getSettings() {
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ action: "getSettings" }, resolve);
-  });
-}
-
-async function loadSettings() {
-  try {
-    const settings = await getSettings();
-    document.getElementById("api-endpoint").value = settings.apiEndpoint || "";
-    document.getElementById("api-key").value = settings.apiKey || "";
-    document.getElementById("api-model").value = settings.apiModel || "";
-  } catch (error) {
-    console.error("Failed to load settings:", error);
   }
 }
 
