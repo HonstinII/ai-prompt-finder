@@ -87,21 +87,14 @@ async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
   // 中转站通常兼容 OpenAI 格式
   const baseUrl = customEndpoint.replace(/\/$/, "");
 
-  const response = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: apiModel,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
+  // 构建消息内容
+  let content;
+  if (imageUrl.startsWith('data:')) {
+    // data URL (base64) - 直接使用
+    content = [
+      {
+        type: "text",
+        text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
 1. 主体描述（Subject）
 2. 艺术风格（Style）
 3. 构图细节（Composition）
@@ -114,12 +107,61 @@ async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
 
 【中文】
 [中文描述]`
-            },
-            {
-              type: "image_url",
-              image_url: { url: imageUrl }
-            }
-          ]
+      },
+      {
+        type: "image_url",
+        image_url: { url: imageUrl }
+      }
+    ];
+  } else {
+    // 远程URL - 需要先下载转为base64
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const base64 = await blobToBase64(blob);
+      const mimeType = blob.type || 'image/jpeg';
+      content = [
+        {
+          type: "text",
+          text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
+1. 主体描述（Subject）
+2. 艺术风格（Style）
+3. 构图细节（Composition）
+4. 色彩光线（Color & Lighting）
+5. 质量修饰词（Quality modifiers）
+
+格式：
+【英文】
+[英文提示词]
+
+【中文】
+[中文描述]`
+        },
+        {
+          type: "image_url",
+          image_url: { url: `data:${mimeType};base64,${base64}` }
+        }
+      ];
+    } catch (error) {
+      throw new Error(`无法获取图片: ${error.message}`);
+    }
+  }
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: apiModel,
+      messages: [
+        {
+          role: "user",
+          content: content
         }
       ],
       max_tokens: 1000
@@ -127,11 +169,14 @@ async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(`API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    const errorText = await response.text();
+    throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
+  if (!data.choices || !data.choices[0]) {
+    throw new Error(`API返回格式错误: ${JSON.stringify(data)}`);
+  }
   return data.choices[0].message.content;
 }
 
