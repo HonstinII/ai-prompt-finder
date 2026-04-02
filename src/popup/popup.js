@@ -81,6 +81,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============ 加载设置 ============
   loadSettings();
 
+  // ============ API类型切换 - 显示/隐藏中转站地址 ============
+  document.getElementById("api-provider").addEventListener("change", (e) => {
+    const endpointLabel = document.getElementById("custom-endpoint-label");
+    if (e.target.value === "custom") {
+      endpointLabel.classList.remove("hidden");
+    } else {
+      endpointLabel.classList.add("hidden");
+    }
+  });
+
   // ============ 保存设置 ============
   document.getElementById("save-settings").addEventListener("click", async () => {
     const settings = {

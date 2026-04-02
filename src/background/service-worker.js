@@ -68,9 +68,71 @@ async function analyzeImage(imageUrl, provider) {
 
   if (actualProvider === "anthropic") {
     return await analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel);
+  } else if (actualProvider === "custom") {
+    return await analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel);
   } else {
     return await analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel);
   }
+}
+
+// 自定义API调用（使用中转站）
+async function analyzeWithCustom(imageUrl, apiKey, customEndpoint, apiModel) {
+  if (!customEndpoint) {
+    throw new Error("请填写中转站地址");
+  }
+  if (!apiModel) {
+    throw new Error("请填写模型名称");
+  }
+
+  // 中转站通常兼容 OpenAI 格式
+  const baseUrl = customEndpoint.replace(/\/$/, "");
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: apiModel,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `分析这张图片，生成详细的AI绘画提示词。请分别用英文和中文输出：
+1. 主体描述（Subject）
+2. 艺术风格（Style）
+3. 构图细节（Composition）
+4. 色彩光线（Color & Lighting）
+5. 质量修饰词（Quality modifiers）
+
+格式：
+【英文】
+[英文提示词]
+
+【中文】
+[中文描述]`
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageUrl }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
 }
 
 // OpenAI GPT-4V 调用
@@ -202,6 +264,37 @@ async function analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel) {
 }
 
 // ============ 消息监听器 ============
+
+// 右键菜单创建
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "ai-prompt-finder",
+    title: "识别AI提示词",
+    contexts: ["image"]
+  });
+});
+
+// 右键菜单点击处理
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
+    analyzeImage(info.srcUrl, null)
+      .then(prompt => {
+        // 可以通过 notifications 通知用户
+        chrome.notifications.create({
+          type: "basic",
+          title: "AI Prompt Finder",
+          message: "分析完成！请查看插件弹窗。"
+        });
+      })
+      .catch(error => {
+        chrome.notifications.create({
+          type: "basic",
+          title: "AI Prompt Finder",
+          message: `错误: ${error.message}`
+        });
+      });
+  }
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "analyzeImage") {

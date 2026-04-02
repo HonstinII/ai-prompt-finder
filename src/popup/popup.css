@@ -186,6 +186,12 @@ button {
   font-size: 13px;
 }
 
+#custom-endpoint-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
 .btn-save {
   width: 100%;
   background: #4CAF50;

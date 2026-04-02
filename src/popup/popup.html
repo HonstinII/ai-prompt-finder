@@ -60,6 +60,7 @@
           <select id="api-provider">
             <option value="openai">OpenAI (GPT系列)</option>
             <option value="anthropic">Anthropic (Claude系列)</option>
+            <option value="custom">自定义</option>
           </select>
         </label>
         <label>
@@ -70,8 +71,8 @@
           API Key:
           <input type="password" id="api-key" placeholder="输入你的API Key">
         </label>
-        <label>
-          中转站地址（可选）:
+        <label id="custom-endpoint-label" class="hidden">
+          中转站地址:
           <input type="text" id="custom-endpoint" placeholder="如 https://api.openai.com/v1">
         </label>
         <button id="save-settings" class="btn-save">保存设置</button>
