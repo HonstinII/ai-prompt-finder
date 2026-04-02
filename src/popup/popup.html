@@ -56,11 +56,15 @@
       <button id="settings-toggle" class="settings-toggle">⚙️ 设置</button>
       <div id="settings-panel" class="settings-panel hidden">
         <label>
-          API Provider:
+          API 类型:
           <select id="api-provider">
-            <option value="openai">OpenAI GPT-4V</option>
-            <option value="anthropic">Claude Vision</option>
+            <option value="openai">OpenAI (GPT系列)</option>
+            <option value="anthropic">Anthropic (Claude系列)</option>
           </select>
+        </label>
+        <label>
+          模型名称:
+          <input type="text" id="api-model" placeholder="如 gpt-4o、claude-3-5-sonnet-20241022">
         </label>
         <label>
           API Key:

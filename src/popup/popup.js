@@ -86,6 +86,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const settings = {
       apiProvider: document.getElementById("api-provider").value,
       apiKey: document.getElementById("api-key").value,
+      apiModel: document.getElementById("api-model").value.trim(),
       customEndpoint: document.getElementById("custom-endpoint").value.trim()
     };
     await chrome.runtime.sendMessage({ action: "saveSettings", settings });
@@ -196,6 +197,7 @@ async function loadSettings() {
     const settings = await getSettings();
     document.getElementById("api-provider").value = settings.apiProvider || "openai";
     document.getElementById("api-key").value = settings.apiKey || "";
+    document.getElementById("api-model").value = settings.apiModel || "";
     document.getElementById("custom-endpoint").value = settings.customEndpoint || "";
   } catch (error) {
     console.error("Failed to load settings:", error);

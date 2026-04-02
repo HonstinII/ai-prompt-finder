@@ -7,6 +7,7 @@
 const DEFAULT_SETTINGS = {
   apiProvider: "openai", // "openai" | "anthropic"
   apiKey: "",
+  apiModel: "", // 手动填入的模型名称，如 gpt-4o
   customEndpoint: "", // 中转站地址，如 https://api.openai.com/v1
   language: "both" // "en" | "zh" | "both"
 };
@@ -58,6 +59,7 @@ async function analyzeImage(imageUrl, provider) {
   const settings = await getSettings();
   const apiKey = settings.apiKey;
   const customEndpoint = settings.customEndpoint;
+  const apiModel = settings.apiModel;
   const actualProvider = provider || settings.apiProvider;
 
   if (!apiKey) {
@@ -65,15 +67,16 @@ async function analyzeImage(imageUrl, provider) {
   }
 
   if (actualProvider === "anthropic") {
-    return await analyzeWithClaude(imageUrl, apiKey, customEndpoint);
+    return await analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel);
   } else {
-    return await analyzeWithOpenAI(imageUrl, apiKey, customEndpoint);
+    return await analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel);
   }
 }
 
 // OpenAI GPT-4V 调用
-async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint) {
+async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint, apiModel) {
   const baseUrl = customEndpoint || "https://api.openai.com/v1";
+  const model = apiModel || "gpt-4o";
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -82,7 +85,7 @@ async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint) {
       "Authorization": `Bearer ${apiKey}`
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: model,
       messages: [
         {
           role: "user",
@@ -124,7 +127,7 @@ async function analyzeWithOpenAI(imageUrl, apiKey, customEndpoint) {
 }
 
 // Anthropic Claude Vision 调用
-async function analyzeWithClaude(imageUrl, apiKey, customEndpoint) {
+async function analyzeWithClaude(imageUrl, apiKey, customEndpoint, apiModel) {
   // 将图片URL转换为base64
   let base64Data;
   try {
@@ -144,6 +147,7 @@ async function analyzeWithClaude(imageUrl, apiKey, customEndpoint) {
   }
 
   const baseUrl = customEndpoint || "https://api.anthropic.com/v1";
+  const model = apiModel || "claude-3-5-sonnet-20241022";
   const claudeResponse = await fetch(`${baseUrl}/messages`, {
     method: "POST",
     headers: {
@@ -152,7 +156,7 @@ async function analyzeWithClaude(imageUrl, apiKey, customEndpoint) {
       "anthropic-version": "2023-06-01"
     },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 1024,
       messages: [
         {
