@@ -12,21 +12,34 @@ function showToast(message) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // ============ 检查是否有待分析的图片（右键菜单触发） ============
-  const pending = await chrome.runtime.sendMessage({ action: "getPendingAnalysis" });
+  // ============ 检查URL参数是否有待分析的图片（右键菜单触发） ============
+  const urlParams = new URLSearchParams(window.location.search);
+  const imageUrlParam = urlParams.get('imageUrl');
 
-  if (pending && pending.imageUrl) {
+  if (imageUrlParam) {
+    const imageUrl = decodeURIComponent(imageUrlParam);
+
     // 有待分析的图片，立即显示loading状态
     document.getElementById("upload-zone").classList.add("hidden");
     document.getElementById("preview-container").classList.remove("hidden");
-    document.getElementById("preview-image").src = pending.imageUrl;
+    document.getElementById("preview-image").src = imageUrl;
     document.getElementById("loading-area").classList.remove("hidden");
 
     // 调用分析
-    analyzeImage(pending.imageUrl).then(() => {
-      // 分析完成后清除pending状态
-      chrome.runtime.sendMessage({ action: "clearPendingAnalysis" });
-    });
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: "analyzeImage",
+        imageUrl: imageUrl
+      });
+
+      if (response.success) {
+        showResult(response.prompt);
+      } else {
+        showError(response.error);
+      }
+    } catch (error) {
+      showError(error.message);
+    }
   }
 
   // ============ 关闭按钮 ============

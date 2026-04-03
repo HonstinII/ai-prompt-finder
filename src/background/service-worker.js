@@ -149,22 +149,31 @@ async function analyzeImage(imageUrl) {
   return data.choices[0].message.content;
 }
 
-// ============ 右键菜单 ============
-
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "ai-prompt-finder",
-    title: "识别AI提示词",
-    contexts: ["image"]
+// ============ 右键菜单创建 ============
+function createContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "ai-prompt-finder",
+      title: "识别AI提示词",
+      contexts: ["image"]
+    });
   });
+}
+
+// 安装时创建右键菜单
+chrome.runtime.onInstalled.addListener(() => {
+  createContextMenu();
 });
 
-// 右键菜单点击处理
+// Service Worker 启动时也创建（确保每次重启都有）
+createContextMenu();
+
+// ============ 右键菜单点击处理 ============
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
     console.log("Context menu clicked, image URL:", info.srcUrl);
 
-    // 保存待分析的图片URL，popup打开后会立即读取并显示loading
+    // 保存待分析的图片URL
     await chrome.storage.local.set({
       pendingAnalysis: {
         imageUrl: info.srcUrl,
@@ -172,22 +181,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       }
     });
 
-    // 保存右键点击位置，用于定位popup
-    if (info.pageUrl) {
-      await chrome.storage.local.set({ clickPageUrl: info.pageUrl });
-    }
-
-    // 打开popup窗口
-    chrome.action.openPopup().catch(() => {
-      // 如果openPopup失败，创建新窗口
-      chrome.windows.create({
-        url: "src/popup/popup.html",
-        type: "popup",
-        width: 380,
-        height: 480,
-        left: Math.min(info.mouseX, screen.availWidth - 400),
-        top: Math.min(info.mouseY, screen.availHeight - 500)
-      });
+    // 直接创建popup窗口，传入图片URL作为参数
+    chrome.windows.create({
+      url: `src/popup/popup.html?imageUrl=${encodeURIComponent(info.srcUrl)}`,
+      type: "popup",
+      width: 380,
+      height: 480,
+      left: Math.min(info.mouseX, screen.availWidth - 400),
+      top: Math.min(info.mouseY, screen.availHeight - 500)
     });
   }
 });
