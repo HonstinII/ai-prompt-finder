@@ -6,7 +6,7 @@
 const API_CONFIG = {
   endpoint: "https://api.alltoken.co/v1",
   apiKey: "sk-hzeBKuTfDfzpnT2329CS4Bo9WLBzl2Nx83rMQ3jANRGs5Gng",
-  model: "gpt-5.4"
+  model: "kimi-k2.5"
 };
 
 // ============ 存储管理 ============
