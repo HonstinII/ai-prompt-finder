@@ -1,32 +1,32 @@
 // AI Prompt Finder - Popup JavaScript
 
-document.addEventListener("DOMContentLoaded", () => {
-  // ============ 监听来自 service worker 的消息 ============
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "displayResult") {
-      showResult(message.prompt);
+// Toast 显示函数
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 2000);
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // ============ 检查右键菜单的分析结果 ============
+  const lastResult = await chrome.runtime.sendMessage({ action: "getLastResult" });
+  if (lastResult) {
+    if (lastResult.error) {
+      showError(lastResult.error);
+    } else {
+      showResult(lastResult.prompt);
     }
-  });
+    // 清除结果
+    chrome.runtime.sendMessage({ action: "clearLastResult" });
+  }
 
   // ============ 点击空白处关闭弹窗 ============
   document.getElementById("overlay").addEventListener("click", () => {
     window.close();
-  });
-
-  // ============ Tab切换 ============
-  const tabBtns = document.querySelectorAll(".tab-btn");
-  const tabPanels = document.querySelectorAll(".tab-panel");
-
-  tabBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const tabId = btn.dataset.tab;
-
-      tabBtns.forEach(b => b.classList.remove("active"));
-      tabPanels.forEach(p => p.classList.remove("active"));
-
-      btn.classList.add("active");
-      document.getElementById(`tab-${tabId}`).classList.add("active");
-    });
   });
 
   // ============ 历史记录按钮 ============
@@ -34,88 +34,95 @@ document.addEventListener("DOMContentLoaded", () => {
     showHistory();
   });
 
-  // ============ 复制按钮 ============
-  document.getElementById("copy-btn").addEventListener("click", () => {
-    const promptText = document.getElementById("prompt-output").textContent;
-    const englishPrompt = extractEnglish(promptText);
-    navigator.clipboard.writeText(englishPrompt);
-    alert("英文提示词已复制");
+  // ============ 统一上传区域 ============
+  const uploadZone = document.getElementById("upload-zone");
+  const fileInput = document.getElementById("file-input");
+
+  // 点击上传
+  uploadZone.addEventListener("click", () => fileInput.click());
+
+  // 拖拽上传
+  uploadZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    uploadZone.classList.add("drag-over");
   });
 
-  document.getElementById("copy-zh-btn").addEventListener("click", () => {
-    const promptText = document.getElementById("prompt-output").textContent;
-    const chinesePrompt = extractChinese(promptText);
-    navigator.clipboard.writeText(chinesePrompt);
-    alert("中文描述已复制");
+  uploadZone.addEventListener("dragleave", () => {
+    uploadZone.classList.remove("drag-over");
   });
-});
 
-// ============ 文件上传 ============
-const uploadArea = document.getElementById("upload-area");
-const fileInput = document.getElementById("file-input");
-
-uploadArea.addEventListener("click", () => fileInput.click());
-
-uploadArea.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  uploadArea.style.borderColor = "#333";
-});
-
-uploadArea.addEventListener("dragleave", () => {
-  uploadArea.style.borderColor = "#ccc";
-});
-
-uploadArea.addEventListener("drop", (e) => {
-  e.preventDefault();
-  uploadArea.style.borderColor = "#ccc";
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith("image/")) {
-    handleImageFile(file);
-  }
-});
-
-fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) handleImageFile(file);
-});
-
-// ============ 粘贴功能 ============
-const pasteArea = document.getElementById("paste-area");
-
-pasteArea.addEventListener("paste", (e) => {
-  const items = e.clipboardData.items;
-  for (let item of items) {
-    if (item.type.startsWith("image/")) {
-      const file = item.getAsFile();
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        showPreview(event.target.result, "paste-preview");
-        analyzeImage(event.target.result);
-      };
-      reader.readAsDataURL(file);
-      break;
+  uploadZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    uploadZone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith("image/")) {
+      handleImageFile(file);
     }
-  }
+  });
+
+  // 文件选择
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) handleImageFile(file);
+  });
+
+  // ============ 全局粘贴监听 ============
+  document.addEventListener("paste", (e) => {
+    const items = e.clipboardData.items;
+    for (let item of items) {
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          handleImageFile(file);
+        }
+        break;
+      }
+    }
+  });
+
+  // ============ 复制按钮 ============
+  document.addEventListener("click", (e) => {
+    if (e.target.id === "copy-btn" || e.target.closest("#copy-btn")) {
+      const btn = e.target.id === "copy-btn" ? e.target : e.target.closest("#copy-btn");
+      const promptText = document.getElementById("prompt-output").textContent;
+      const englishPrompt = extractEnglish(promptText);
+      navigator.clipboard.writeText(englishPrompt);
+      showToast("英文提示词已复制");
+    }
+
+    if (e.target.id === "copy-zh-btn" || e.target.closest("#copy-zh-btn")) {
+      const btn = e.target.id === "copy-zh-btn" ? e.target : e.target.closest("#copy-zh-btn");
+      const promptText = document.getElementById("prompt-output").textContent;
+      const chinesePrompt = extractChinese(promptText);
+      navigator.clipboard.writeText(chinesePrompt);
+      showToast("中文描述已复制");
+    }
+  });
 });
 
-// ============ 辅助函数 ============
-
+// ============ 处理图片文件 ============
 function handleImageFile(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
-    showPreview(e.target.result, "preview-container");
+    showPreview(e.target.result);
     analyzeImage(e.target.result);
   };
   reader.readAsDataURL(file);
 }
 
-function showPreview(src, containerId) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = `<img src="${src}" alt="Preview">`;
+// ============ 显示预览 ============
+function showPreview(src) {
+  const container = document.getElementById("preview-container");
+  const img = document.getElementById("preview-image");
+  img.src = src;
   container.classList.remove("hidden");
 }
 
+// ============ 显示结果 ============
 function showResult(prompt) {
+  document.getElementById("loading-area")?.classList.add("hidden");
+  document.getElementById("upload-zone").classList.add("hidden");
+
   const resultArea = document.getElementById("result-area");
   resultArea.innerHTML = `
     <h3>识别结果</h3>
@@ -126,54 +133,57 @@ function showResult(prompt) {
     </div>
   `;
   resultArea.classList.remove("hidden");
-
-  // Re-bind copy button listeners
-  document.getElementById("copy-btn").addEventListener("click", () => {
-    const promptText = document.getElementById("prompt-output").textContent;
-    const englishPrompt = extractEnglish(promptText);
-    navigator.clipboard.writeText(englishPrompt);
-    alert("英文提示词已复制");
-  });
-
-  document.getElementById("copy-zh-btn").addEventListener("click", () => {
-    const promptText = document.getElementById("prompt-output").textContent;
-    const chinesePrompt = extractChinese(promptText);
-    navigator.clipboard.writeText(chinesePrompt);
-    alert("中文描述已复制");
-  });
+  showToast("分析完成");
 }
 
+// ============ 显示加载状态 ============
 function showLoading() {
-  const resultArea = document.getElementById("result-area");
-  resultArea.innerHTML = `
-    <div class="loading">
+  document.getElementById("upload-zone").classList.add("hidden");
+  document.getElementById("preview-container").classList.remove("hidden");
+
+  const loadingArea = document.getElementById("loading-area");
+  if (!loadingArea) {
+    const container = document.querySelector(".container");
+    const loadingDiv = document.createElement("div");
+    loadingDiv.id = "loading-area";
+    loadingDiv.className = "loading-area";
+    loadingDiv.innerHTML = `
       <div class="spinner"></div>
       <p>正在分析图片...</p>
-    </div>
-    <div id="prompt-output" style="display:none;"></div>
-  `;
-  resultArea.classList.remove("hidden");
+    `;
+    container.appendChild(loadingDiv);
+  } else {
+    loadingArea.classList.remove("hidden");
+  }
 }
 
+// ============ 显示错误 ============
 function showError(message) {
+  document.getElementById("loading-area")?.classList.add("hidden");
+  document.getElementById("upload-zone").classList.add("hidden");
+
   const resultArea = document.getElementById("result-area");
   resultArea.innerHTML = `
-    <p style="color: red;">错误: ${message}</p>
+    <div class="error-text">错误: ${message}</div>
     <div id="prompt-output" style="display:none;"></div>
   `;
   resultArea.classList.remove("hidden");
+  showToast("分析失败");
 }
 
+// ============ 提取英文提示词 ============
 function extractEnglish(text) {
   const match = text.match(/【英文】\s*([\s\S]*?)(?=【中文】|$)/);
   return match ? match[1].trim() : text;
 }
 
+// ============ 提取中文描述 ============
 function extractChinese(text) {
   const match = text.match(/【中文】\s*([\s\S]*?)$/);
   return match ? match[1].trim() : text;
 }
 
+// ============ 分析图片 ============
 async function analyzeImage(imageData) {
   showLoading();
 
@@ -193,23 +203,29 @@ async function analyzeImage(imageData) {
   }
 }
 
+// ============ 显示历史记录 ============
 async function showHistory() {
   try {
     const history = await chrome.runtime.sendMessage({ action: "getHistory" });
     if (history && history.length > 0) {
       const resultArea = document.getElementById("result-area");
-      let historyHtml = '<h3>历史记录</h3><div style="max-height: 300px; overflow-y: auto;">';
+      let historyHtml = `
+        <button class="back-btn" onclick="location.reload()">← 返回</button>
+        <h3>历史记录</h3>
+        <div style="max-height: 350px; overflow-y: auto;">
+      `;
       history.forEach(item => {
         historyHtml += `
-          <div style="padding: 8px; border-bottom: 1px solid #eee;">
-            <img src="${item.imageUrl}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px; vertical-align: middle; margin-right: 8px;">
-            <span style="font-size: 12px; color: #666;">${new Date(item.timestamp).toLocaleString()}</span>
+          <div class="history-item" onclick="loadHistoryItem('${item.imageUrl.replace(/'/g, "\\'")}', \`${item.prompt.replace(/`/g, "\\`").replace(/\$/g, "\\$")}\`)">
+            <img src="${item.imageUrl}" alt="历史图片">
+            <span>${new Date(item.timestamp).toLocaleString()}</span>
           </div>
         `;
       });
       historyHtml += '</div>';
       resultArea.innerHTML = historyHtml + '<div id="prompt-output" style="display:none;"></div>';
       resultArea.classList.remove("hidden");
+      document.getElementById("upload-zone").classList.add("hidden");
     } else {
       showError("暂无历史记录");
     }
@@ -217,3 +233,10 @@ async function showHistory() {
     showError("无法加载历史记录");
   }
 }
+
+// ============ 加载历史记录项 ============
+window.loadHistoryItem = function(imageUrl, prompt) {
+  document.getElementById("preview-container").classList.remove("hidden");
+  document.getElementById("preview-image").src = imageUrl;
+  showResult(prompt);
+};

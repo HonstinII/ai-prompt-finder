@@ -6,33 +6,33 @@
 </head>
 <body>
   <div id="overlay" class="overlay hidden"></div>
+
+  <!-- Toast 提示 -->
+  <div id="toast" class="toast hidden"></div>
+
   <div class="container">
     <header>
       <h1>AI Prompt Finder</h1>
     </header>
 
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="upload">上传</button>
-      <button class="tab-btn" data-tab="paste">粘贴</button>
+    <!-- 统一上传区域：点击上传或粘贴图片 -->
+    <div class="upload-zone" id="upload-zone">
+      <input type="file" id="file-input" accept="image/*" hidden>
+      <div class="upload-hint">
+        <p>点击上传图片 / 粘贴图片 (Ctrl+V)</p>
+        <p class="sub-hint">支持 JPG, PNG, JPEG, GIF, WEBP</p>
+      </div>
     </div>
 
-    <div class="tab-content">
-      <!-- 上传Tab -->
-      <div id="tab-upload" class="tab-panel active">
-        <div class="upload-area" id="upload-area">
-          <input type="file" id="file-input" accept="image/*" hidden>
-          <p>点击选择图片或拖拽到此处</p>
-        </div>
-        <div id="preview-container" class="preview-container hidden"></div>
-      </div>
+    <!-- 预览区域 -->
+    <div id="preview-container" class="preview-container hidden">
+      <img id="preview-image" src="" alt="Preview">
+    </div>
 
-      <!-- 粘贴Tab -->
-      <div id="tab-paste" class="tab-panel">
-        <div class="paste-area" id="paste-area">
-          <p>粘贴图片到这里 (Ctrl+V / Cmd+V)</p>
-        </div>
-        <div id="paste-preview" class="preview-container hidden"></div>
-      </div>
+    <!-- 加载状态 -->
+    <div id="loading-area" class="loading-area hidden">
+      <div class="spinner"></div>
+      <p>正在分析图片...</p>
     </div>
 
     <!-- 结果区域 -->

@@ -2,7 +2,6 @@
 // 包含存储管理和API调用
 
 // ============ 硬编码API配置 ============
-// 请修改以下配置为你的API中转站信息
 const API_CONFIG = {
   endpoint: "https://api.alltoken.co/v1",
   apiKey: "sk-hzeBKuTfDfzpnT2329CS4Bo9WLBzl2Nx83rMQ3jANRGs5Gng",
@@ -150,9 +149,8 @@ async function analyzeImage(imageUrl) {
   return data.choices[0].message.content;
 }
 
-// ============ 消息监听器 ============
+// ============ 右键菜单 ============
 
-// 右键菜单创建
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: "ai-prompt-finder",
@@ -162,32 +160,52 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 // 右键菜单点击处理
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
     console.log("Context menu clicked, image URL:", info.srcUrl);
-    analyzeImage(info.srcUrl)
-      .then(prompt => {
-        console.log("Analysis successful, prompt:", prompt);
-        chrome.notifications.create({
-          type: "basic",
-          title: "AI Prompt Finder",
-          message: "分析完成！请查看插件弹窗。"
-        });
-        chrome.runtime.sendMessage({
-          action: "displayResult",
-          prompt: prompt
-        }).catch(e => console.log("Could not send to popup:", e));
-      })
-      .catch(error => {
-        console.error("Analysis failed:", error);
-        chrome.notifications.create({
-          type: "basic",
-          title: "AI Prompt Finder",
-          message: `错误: ${error.message}`
+
+    try {
+      // 分析图片
+      const prompt = await analyzeImage(info.srcUrl);
+
+      // 保存到历史
+      await addToHistory({
+        imageUrl: info.srcUrl,
+        prompt: prompt
+      });
+
+      // 保存当前分析结果，用于popup显示
+      await chrome.storage.local.set({ lastResult: { prompt, imageUrl: info.srcUrl } });
+
+      // 打开popup窗口显示结果
+      chrome.action.openPopup().catch(() => {
+        // 如果openPopup失败，尝试创建新窗口
+        chrome.windows.create({
+          url: "src/popup/popup.html",
+          type: "popup",
+          width: 400,
+          height: 500
         });
       });
+
+    } catch (error) {
+      console.error("Analysis failed:", error);
+      // 保存错误信息
+      await chrome.storage.local.set({ lastResult: { error: error.message } });
+      // 打开popup显示错误
+      chrome.action.openPopup().catch(() => {
+        chrome.windows.create({
+          url: "src/popup/popup.html",
+          type: "popup",
+          width: 400,
+          height: 500
+        });
+      });
+    }
   }
 });
+
+// ============ 消息监听器 ============
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "analyzeImage") {
@@ -208,11 +226,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "displayResult") {
-    chrome.runtime.sendMessage({
-      action: "displayResult",
-      prompt: message.prompt
-    }).catch(e => console.log("Could not send to popup:", e));
+  if (message.action === "getLastResult") {
+    chrome.storage.local.get(["lastResult"]).then(result => sendResponse(result.lastResult || null));
+    return true;
+  }
+
+  if (message.action === "clearLastResult") {
+    chrome.storage.local.remove(["lastResult"]).then(() => sendResponse(true));
     return true;
   }
 });

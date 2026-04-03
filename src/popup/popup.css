@@ -24,6 +24,27 @@ body {
   cursor: pointer;
 }
 
+/* Toast 提示 */
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.hidden {
+  opacity: 0;
+}
+
 .container {
   padding: 16px;
 }
@@ -35,63 +56,42 @@ header h1 {
   margin-bottom: 12px;
 }
 
-/* Tabs */
-.tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 12px;
-  background: #e0e0e0;
-  padding: 4px;
-  border-radius: 8px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-size: 13px;
-  border-radius: 6px;
-  transition: all 0.2s;
-}
-
-.tab-btn.active {
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.tab-panel {
-  display: none;
-}
-
-.tab-panel.active {
-  display: block;
-}
-
-/* Upload/Paste Area */
-.upload-area, .paste-area {
+/* 统一上传区域 */
+.upload-zone {
   border: 2px dashed #ccc;
-  border-radius: 8px;
-  padding: 32px;
+  border-radius: 12px;
+  padding: 40px 20px;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
   background: white;
+  margin-bottom: 12px;
 }
 
-.upload-area:hover, .paste-area:hover {
+.upload-zone:hover {
   border-color: #666;
+  background: #fafafa;
 }
 
-.upload-area p, .paste-area p {
+.upload-zone.drag-over {
+  border-color: #333;
+  background: #f0f0f0;
+}
+
+.upload-hint p {
   color: #666;
-  font-size: 13px;
+  font-size: 14px;
 }
 
-/* Preview */
+.upload-hint .sub-hint {
+  color: #999;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* 预览 */
 .preview-container {
-  margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 .preview-container img {
@@ -102,57 +102,91 @@ header h1 {
   background: #eee;
 }
 
-.hidden {
-  display: none !important;
+.preview-container.hidden {
+  display: none;
 }
 
-/* Result Area */
-.result-area {
-  margin-top: 16px;
-  padding: 12px;
+/* 加载状态 */
+.loading-area {
+  text-align: center;
+  padding: 30px;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom: 12px;
+}
+
+.loading-area.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 结果区域 */
+.result-area {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.result-area.hidden {
+  display: none;
 }
 
 .result-area h3 {
   font-size: 14px;
+  color: #666;
   margin-bottom: 8px;
 }
 
 #prompt-output {
-  background: #f8f8f8;
-  padding: 12px;
-  border-radius: 6px;
   font-size: 13px;
   line-height: 1.6;
-  max-height: 200px;
-  overflow-y: auto;
   white-space: pre-wrap;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
 }
 
+/* 操作按钮 */
 .actions {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
 }
 
-button {
-  padding: 8px 16px;
+.btn-primary, .btn-secondary {
+  flex: 1;
+  padding: 10px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   font-size: 13px;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
 .btn-primary {
-  background: #1a1a1a;
+  background: #333;
   color: white;
 }
 
 .btn-primary:hover {
-  background: #333;
+  background: #555;
 }
 
 .btn-secondary {
@@ -161,121 +195,71 @@ button {
 }
 
 .btn-secondary:hover {
-  background: #ccc;
+  background: #d0d0d0;
 }
 
-/* Settings */
-.settings-section {
-  margin-top: 16px;
-  border-top: 1px solid #ddd;
-  padding-top: 12px;
-}
-
-.settings-toggle {
-  background: none;
-  font-size: 18px;
-  padding: 4px;
-}
-
-.settings-panel {
-  margin-top: 12px;
-}
-
-.settings-panel label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.settings-panel input,
-.settings-panel select {
-  width: 100%;
-  padding: 6px 8px;
-  margin-top: 4px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 13px;
-}
-
-#custom-endpoint-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 12px;
-}
-
-.btn-save {
-  width: 100%;
-  background: #4CAF50;
-  color: white;
-  margin-top: 8px;
-}
-
-.btn-save:hover {
-  background: #45a049;
-}
-
-/* History Link */
+/* 历史记录入口 */
 .history-link {
-  margin-top: 12px;
   text-align: center;
 }
 
 .history-link button {
   background: none;
+  border: none;
   color: #666;
+  cursor: pointer;
   font-size: 13px;
+  padding: 8px;
 }
 
 .history-link button:hover {
   color: #333;
 }
 
-/* Page Images Grid */
-.page-images {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+/* 历史记录列表 */
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
 }
 
-.page-images img {
-  width: 100%;
-  aspect-ratio: 1;
+.history-item:hover {
+  background: #f9f9f9;
+}
+
+.history-item img {
+  width: 50px;
+  height: 50px;
   object-fit: cover;
   border-radius: 4px;
+  margin-right: 10px;
+}
+
+.history-item span {
+  font-size: 12px;
+  color: #666;
+}
+
+.back-btn {
+  background: #e0e0e0;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.page-images img:hover {
-  transform: scale(1.05);
-}
-
-/* Loading State */
-.loading {
-  text-align: center;
-  padding: 20px;
-  color: #666;
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #333;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 8px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Hint text */
-.hint {
-  text-align: center;
-  color: #666;
+  margin-bottom: 12px;
   font-size: 13px;
-  padding: 20px;
+}
+
+.back-btn:hover {
+  background: #d0d0d0;
+}
+
+.error-text {
+  color: #e53935;
+  padding: 10px;
+  background: #ffebee;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
