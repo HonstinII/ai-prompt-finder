@@ -164,44 +164,31 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "ai-prompt-finder" && info.srcUrl) {
     console.log("Context menu clicked, image URL:", info.srcUrl);
 
-    try {
-      // 分析图片
-      const prompt = await analyzeImage(info.srcUrl);
-
-      // 保存到历史
-      await addToHistory({
+    // 保存待分析的图片URL，popup打开后会立即读取并显示loading
+    await chrome.storage.local.set({
+      pendingAnalysis: {
         imageUrl: info.srcUrl,
-        prompt: prompt
-      });
+        timestamp: Date.now()
+      }
+    });
 
-      // 保存当前分析结果，用于popup显示
-      await chrome.storage.local.set({ lastResult: { prompt, imageUrl: info.srcUrl } });
-
-      // 打开popup窗口显示结果
-      chrome.action.openPopup().catch(() => {
-        // 如果openPopup失败，尝试创建新窗口
-        chrome.windows.create({
-          url: "src/popup/popup.html",
-          type: "popup",
-          width: 400,
-          height: 500
-        });
-      });
-
-    } catch (error) {
-      console.error("Analysis failed:", error);
-      // 保存错误信息
-      await chrome.storage.local.set({ lastResult: { error: error.message } });
-      // 打开popup显示错误
-      chrome.action.openPopup().catch(() => {
-        chrome.windows.create({
-          url: "src/popup/popup.html",
-          type: "popup",
-          width: 400,
-          height: 500
-        });
-      });
+    // 保存右键点击位置，用于定位popup
+    if (info.pageUrl) {
+      await chrome.storage.local.set({ clickPageUrl: info.pageUrl });
     }
+
+    // 打开popup窗口
+    chrome.action.openPopup().catch(() => {
+      // 如果openPopup失败，创建新窗口
+      chrome.windows.create({
+        url: "src/popup/popup.html",
+        type: "popup",
+        width: 380,
+        height: 480,
+        left: Math.min(info.mouseX, screen.availWidth - 400),
+        top: Math.min(info.mouseY, screen.availHeight - 500)
+      });
+    });
   }
 });
 
@@ -226,13 +213,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "getLastResult") {
-    chrome.storage.local.get(["lastResult"]).then(result => sendResponse(result.lastResult || null));
+  if (message.action === "getPendingAnalysis") {
+    chrome.storage.local.get(["pendingAnalysis"]).then(result => {
+      sendResponse(result.pendingAnalysis || null);
+    });
     return true;
   }
 
-  if (message.action === "clearLastResult") {
-    chrome.storage.local.remove(["lastResult"]).then(() => sendResponse(true));
+  if (message.action === "clearPendingAnalysis") {
+    chrome.storage.local.remove(["pendingAnalysis"]).then(() => sendResponse(true));
     return true;
   }
 });

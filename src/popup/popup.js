@@ -12,20 +12,25 @@ function showToast(message) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // ============ 检查右键菜单的分析结果 ============
-  const lastResult = await chrome.runtime.sendMessage({ action: "getLastResult" });
-  if (lastResult) {
-    if (lastResult.error) {
-      showError(lastResult.error);
-    } else {
-      showResult(lastResult.prompt);
-    }
-    // 清除结果
-    chrome.runtime.sendMessage({ action: "clearLastResult" });
+  // ============ 检查是否有待分析的图片（右键菜单触发） ============
+  const pending = await chrome.runtime.sendMessage({ action: "getPendingAnalysis" });
+
+  if (pending && pending.imageUrl) {
+    // 有待分析的图片，立即显示loading状态
+    document.getElementById("upload-zone").classList.add("hidden");
+    document.getElementById("preview-container").classList.remove("hidden");
+    document.getElementById("preview-image").src = pending.imageUrl;
+    document.getElementById("loading-area").classList.remove("hidden");
+
+    // 调用分析
+    analyzeImage(pending.imageUrl).then(() => {
+      // 分析完成后清除pending状态
+      chrome.runtime.sendMessage({ action: "clearPendingAnalysis" });
+    });
   }
 
-  // ============ 点击空白处关闭弹窗 ============
-  document.getElementById("overlay").addEventListener("click", () => {
+  // ============ 关闭按钮 ============
+  document.getElementById("close-btn").addEventListener("click", () => {
     window.close();
   });
 
@@ -120,7 +125,7 @@ function showPreview(src) {
 
 // ============ 显示结果 ============
 function showResult(prompt) {
-  document.getElementById("loading-area")?.classList.add("hidden");
+  document.getElementById("loading-area").classList.add("hidden");
   document.getElementById("upload-zone").classList.add("hidden");
 
   const resultArea = document.getElementById("result-area");
@@ -159,7 +164,7 @@ function showLoading() {
 
 // ============ 显示错误 ============
 function showError(message) {
-  document.getElementById("loading-area")?.classList.add("hidden");
+  document.getElementById("loading-area").classList.add("hidden");
   document.getElementById("upload-zone").classList.add("hidden");
 
   const resultArea = document.getElementById("result-area");
